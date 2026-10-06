@@ -5,7 +5,7 @@ defmodule CartServer do
   Documentation for `CartServer`.
   """
   # Client
-  def start_link() do
+  def start_link(_opts) do
     GenServer.start_link(__MODULE__, %{}, name: :cart_server)
   end
 
@@ -21,6 +21,7 @@ defmodule CartServer do
 
   @impl true
   def init(_state) do
+    IO.puts("Cart Server is starting")
     {:ok, %{cart: [], timer_pid: nil}}
   end
   # Callbacks
@@ -64,11 +65,11 @@ defmodule CartServer do
       timer -> Process.cancel_timer(timer)
     end
 
-    case length(state.cart) do
-      total when total > 0 ->
+    case state.cart do
+      [] ->
         pid = Process.send_after(self(), :send_reminder, 5_000)
         %{state | timer_pid: pid}
-      _ ->
+      _items ->
         %{state | timer_pid: nil}
       end
   end
