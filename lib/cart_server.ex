@@ -4,25 +4,29 @@ defmodule CartServer do
   @moduledoc """
   Documentation for `CartServer`.
   """
+
+  @default_server_name  :default_cart_server
   # Client
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, %{}, name: :cart_server)
+  def start_link(opts) do
+    name = Keyword.get(opts, :name,  @default_server_name)
+    # GenServer.start_link(__MODULE__, %{}, name: :cart_server)
+     GenServer.start_link(__MODULE__, %{name: name}, name: name)
   end
 
-  def cart_total, do: GenServer.call(:cart_server, :total)
+  def cart_total(server \\  @default_server_name ), do: GenServer.call(server, :total)
 
-  def add_item(%{name: _name, price: _price, qty: _qty} = item), do: GenServer.cast(:cart_server, {:add_item, item})
+  def add_item(%{name: _name, price: _price, qty: _qty} = item, server \\  @default_server_name), do: GenServer.cast(server, {:add_item, item})
 
-  def remove_item(item), do: GenServer.cast(:cart_server, {:remove_item, item})
+  def remove_item(item, server \\  @default_server_name), do: GenServer.cast(server, {:remove_item, item})
 
-  def find_item(name) do
-    GenServer.call(:cart_server, {:find_item, name})
+  def find_item(name,  server \\  @default_server_name ) do
+    GenServer.call(server, {:find_item, name})
   end
 
   @impl true
-  def init(_state) do
-    IO.puts("Cart Server is starting")
-    {:ok, %{cart: [], timer_pid: nil}}
+  def init(state) do
+    IO.puts("Cart Server is starting #{state.name}")
+    {:ok, %{cart: [], timer_ref: nil}}
   end
   # Callbacks
   @impl true
@@ -60,17 +64,18 @@ defmodule CartServer do
 
 
   defp send_reminder(state) do
-    case state.timer_pid do
+    case state.timer_ref do
       nil -> nil
       timer -> Process.cancel_timer(timer)
     end
 
     case state.cart do
       [] ->
-        pid = Process.send_after(self(), :send_reminder, 5_000)
-        %{state | timer_pid: pid}
+        %{state | timer_ref: nil}
       _items ->
-        %{state | timer_pid: nil}
+        ref = Process.send_after(self(), :send_reminder, 5_000)
+        %{state | timer_ref: ref}
+
       end
   end
 
